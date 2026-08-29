@@ -270,7 +270,28 @@ moment you add a `ports:` mapping to a datastore you publish it to the world.
 | Seeded `admin@auctioneer.dev` / `admin1234` existed on production | Anyone who guessed the pattern from the two public demo logins could sign in as the admin persona | `scripts/seed.ts` now randomises every non-showcase password per run (`PRIVATE_SEED_PASSWORD`, override with `SEED_PASSWORD`). Only `demo@` and `seller@` stay public, deliberately. |
 | No security headers at all | Clickjacking, no HSTS, MIME sniffing, framework fingerprinting | `next.config.ts` now sets CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP, and disables `poweredByHeader`. |
 | Seller-supplied image URLs accepted plain `http://` | Mixed content, and the validation message promised https | `POST /api/lots` now accepts only `https://` or a site-relative `/path`. |
-| 4 moderate esbuild advisories in the production tree | `drizzle-kit` arrives as an *optional peer of better-auth*, so moving it in `package.json` does not remove it | `overrides` pins `@esbuild-kit/core-utils`'s esbuild to `^0.25.12`. `npm audit` is now clean. |
+| 4 moderate esbuild advisories in the production tree | `drizzle-kit` arrives as an *optional peer of better-auth*, so it installs even under `--omit=dev` | **Not fixed — see below.** Schema work moved to `scripts/migrate.ts` so nothing at runtime calls drizzle-kit, but the package still ships. |
+
+### The esbuild advisories: two fixes that both break the build
+
+`npm audit` reports 4 moderate advisories, all from `drizzle-kit`'s abandoned
+`@esbuild-kit/*` chain pinned to esbuild 0.18 (GHSA-67mh-4wv8-2f99). Do not
+spend time on these without reading this first — both obvious fixes fail, and
+each one costs a red CI build:
+
+- **`overrides` pinning `@esbuild-kit/core-utils`'s esbuild** → `npm ci` dies
+  with `Expected "0.28.2" but got "0.25.12"`. `drizzle-kit`'s nested `tsx`
+  requires esbuild 0.28.2, and esbuild's postinstall runs the binary and
+  compares versions. Note that `npm ci --dry-run` **passes** here, because it
+  skips install scripts — it is not a valid check for this class of change.
+- **`npm ci --omit=peer` in the prod-deps stage** → same error. The flag skips
+  the nested esbuild's platform binary package, so the postinstall check
+  resolves the hoisted esbuild 0.25.12 instead of its own.
+
+The advisory is against esbuild's **dev server**, which requires `esbuild serve`
+to be running. Nothing starts it, in the image or out of it. The package ships
+unused. Verify any future attempt with a real `docker build`, not `npm ci
+--dry-run`.
 
 ### What was already correct — do not regress it
 

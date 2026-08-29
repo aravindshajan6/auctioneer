@@ -27,6 +27,14 @@ RUN npm ci --no-audit --no-fund
 #     copied forward and never has to be pruned out again -------------------
 FROM base AS prod-deps
 COPY package.json package-lock.json ./
+# drizzle-kit rides in as an optional peer of better-auth, so it lands here
+# even though it is a devDependency and nothing at runtime uses it — schema
+# changes go through scripts/migrate.ts, which needs only drizzle-orm. Two
+# ways to evict it both break the build, so it stays: `overrides` on its
+# esbuild fails because tsx requires 0.28.2 and esbuild's postinstall rejects
+# a mismatched binary; `--omit=peer` skips the nested esbuild's platform
+# binary so that same check resolves the hoisted 0.25.12. The advisory it
+# carries (GHSA-67mh-4wv8-2f99) is against esbuild's dev server, never started here.
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # --- Build ------------------------------------------------------------------
