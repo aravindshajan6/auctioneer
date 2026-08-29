@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Auctioneer design system
+   --------------------------------------------------------------------------
+   A saleroom at night: near-black grounds, gilded metal, and one hot signal
+   colour reserved exclusively for live state. The restraint is the point —
+   when almost nothing glows, the thing that glows means something.
+   ========================================================================== */
+
+@theme {
+  /* -- Grounds: cool near-blacks, never pure #000 (kills depth on OLED). -- */
+  --color-void: #05060a;
+  --color-obsidian: #0a0c13;
+  --color-onyx: #11141d;
+  --color-slate-deep: #191d29;
+  --color-pewter: #2a3040;
+  --color-ash: #5b6479;
+  --color-fog: #9aa3b8;
+  --color-linen: #e7e3da;
+  --color-parchment: #f6f3ec;
+
+  /* -- Gild: the house metal. Used for value, never for chrome. ---------- */
+  --color-gild-50: #fdf8e9;
+  --color-gild-100: #f8ecc4;
+  --color-gild-200: #f0da96;
+  --color-gild-300: #e5c264;
+  --color-gild-400: #d9ab3e;
+  --color-gild-500: #c8912a;
+  --color-gild-600: #a67320;
+  --color-gild-700: #7d541c;
+  --color-gild-800: #53381a;
+  --color-gild-900: #2e2011;
+
+  /* -- Signal: reserved for LIVE. Nothing else may use it. --------------- */
+  --color-signal-300: #7ef7d4;
+  --color-signal-400: #34e0b0;
+  --color-signal-500: #12c496;
+  --color-signal-600: #0a9c78;
+
+  /* -- Ember: closing soon, outbid, destructive. ------------------------- */
+  --color-ember-300: #ff9d7a;
+  --color-ember-400: #ff6f4a;
+  --color-ember-500: #ec4826;
+  --color-ember-600: #c0331a;
+
+  /* -- Amethyst: secondary accent for curated/editorial surfaces. -------- */
+  --color-amethyst-300: #c3a8ff;
+  --color-amethyst-400: #9b7cf6;
+  --color-amethyst-500: #7c5ae0;
+
+  /* -- Type ------------------------------------------------------------- */
+  --font-display: var(--font-display), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* -- Motion: one shared vocabulary so the app feels authored. ---------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out-quint: cubic-bezier(0.83, 0, 0.17, 1);
+
+  --animate-shimmer: shimmer 2.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 2s var(--ease-out-expo) infinite;
+  --animate-rise: rise 0.6s var(--ease-out-expo) both;
+  --animate-count-flash: count-flash 0.5s var(--ease-out-expo);
+  --animate-marquee: marquee 42s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  70% { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes count-flash {
+  0% { color: var(--color-signal-400); transform: scale(1.06); }
+  100% { color: inherit; transform: scale(1); }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+  --background: var(--color-void);
+  --foreground: var(--color-linen);
+}
+
+* {
+  border-color: color-mix(in oklab, var(--color-pewter) 60%, transparent);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--color-pewter) transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  /* A faint warm bloom from the top, like a picture light over the rostrum. */
+  background-image:
+    radial-gradient(60rem 40rem at 50% -10%, color-mix(in oklab, var(--color-gild-700) 18%, transparent), transparent 70%),
+    radial-gradient(40rem 30rem at 90% 10%, color-mix(in oklab, var(--color-amethyst-500) 8%, transparent), transparent 70%);
+  background-attachment: fixed;
+}
+
+/* Prices, countdowns and bid amounts must not reflow as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-gild-400) 35%, transparent);
+  color: var(--color-parchment);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-deep);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-pewter); background-clip: content-box; }
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+@utility surface {
+  background: color-mix(in oklab, var(--color-obsidian) 88%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-pewter) 45%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+@utility gild-text {
+  background: linear-gradient(
+    100deg,
+    var(--color-gild-200) 0%,
+    var(--color-gild-400) 30%,
+    var(--color-gild-100) 45%,
+    var(--color-gild-500) 65%,
+    var(--color-gild-300) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility hairline {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-gild-400) 55%, transparent),
+    transparent
+  );
+}
+
+/* A focus ring that survives on both dark grounds and gilded surfaces. */
+@utility focus-gild {
+  outline: 2px solid var(--color-gild-400);
+  outline-offset: 2px;
+}
+
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gild-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   Accessibility
+   --------------------------------------------------------------------------
+   Reduced motion is honoured globally here so no individual component can
+   forget it. Canvas-driven motion is gated separately in useReducedMotion.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

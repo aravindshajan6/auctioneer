@@ -1,0 +1,66 @@
+# Local development infrastructure for Auctioneer.
+#   docker compose up -d
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: auctioneer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auctioneer
+      POSTGRES_PASSWORD: auctioneer
+      POSTGRES_DB: auctioneer
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auctioneer -d auctioneer"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    container_name: auctioneer-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      # Never evict: these keys carry live bid fan-out.
+      - --maxmemory-policy
+      - noeviction
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: chainguard/minio:latest
+    container_name: auctioneer-minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: auctioneer
+      MINIO_ROOT_PASSWORD: auctioneer-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    # No healthcheck: this image is distroless and ships no HTTP client to
+    # probe itself with, so any in-container check fails regardless of whether
+    # MinIO is up. Nothing here gates on its health; the app connects lazily
+    # and /minio/health/live is reachable from the host if you want to check.
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
