@@ -86,6 +86,13 @@ nano .env
 
 `DATABASE_URL` must contain the same password you set in `POSTGRES_PASSWORD`.
 
+> The hostnames in `DATABASE_URL` and `REDIS_URL` are **container** names
+> (`auctioneer-postgres`, `auctioneer-redis`), not the compose service names.
+> The app joins Coolify's shared network so Traefik can route to it, and on
+> that network a generic name like `redis` resolves to whichever container
+> claimed it — Coolify's own Redis, which requires a password and answers
+> `NOAUTH HELLO must be called with the client already authenticated`.
+
 ---
 
 ## 2. First deploy
@@ -222,6 +229,10 @@ Usually the app is crash-looping (read the logs) or
 auctioneer.sapper.top`, and confirm the HTTP router is still enabled: it looks
 redundant next to HTTPS, but Let's Encrypt answers the HTTP-01 challenge on
 port 80, so removing it breaks issuance.
+
+**`NOAUTH` errors from Redis** — the app reached the wrong Redis. Generic
+service names are not safe on the shared `coolify` network; use the container
+names `auctioneer-redis` and `auctioneer-postgres` in `.env`.
 
 **Container restarting** — `docker compose logs app` shows the reason. A
 `MODULE_NOT_FOUND` means a package used at runtime is still filed under
