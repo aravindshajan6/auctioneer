@@ -34,6 +34,12 @@ services:
     restart: unless-stopped
     networks: [coolify, internal]
     env_file: [.env]
+    environment:
+      # Keep V8's heap under the container limit. Without this Node sizes its
+      # heap from the HOST's memory, happily grows past 768 MB, and is killed
+      # by the kernel instead of collecting garbage — a container OOM that
+      # looks like a random crash.
+      NODE_OPTIONS: --max-old-space-size=576
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,8 +49,10 @@ services:
       # Catalogue art is written by the seed at runtime and must survive
       # redeploys; it is not baked into the image.
       - lot-art:/app/public/lots
-    mem_limit: 900m
-    memswap_limit: 900m
+    # Sized against a box with ~1.7 GB genuinely free, where the neighbouring
+    # app already holds ~1.1 GB and runs with no limit of its own.
+    mem_limit: 768m
+    memswap_limit: 768m
     cpus: 1.5
     labels:
       - traefik.enable=true
@@ -86,8 +94,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-    mem_limit: 400m
-    memswap_limit: 400m
+    mem_limit: 320m
+    memswap_limit: 320m
 
   redis:
     image: redis:8-alpine
@@ -113,5 +121,5 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    mem_limit: 192m
-    memswap_limit: 192m
+    mem_limit: 160m
+    memswap_limit: 160m
