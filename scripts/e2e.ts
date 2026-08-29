@@ -398,7 +398,8 @@ async function main() {
         typeof placed.currentPriceCents === "number" &&
           priceBefore !== null &&
           placed.currentPriceCents > priceBefore * 100,
-        `${priceBefore !== null ? priceBefore * 100 : "?"} -> ${placed.currentPriceCents} (bid ${bidAmount * 100})`);
+        `${priceBefore !== null ? priceBefore * 100 : "?"} -> ${placed.currentPriceCents} (bid ${bidAmount * 100}) ` +
+        `outbid=${placed.youWereOutbid} bidCount=${placed.bidCount} nextMin=${placed.minimumNextBidCents}`);
 
       // And the panel must catch up without a reload.
       let shown: number | null = null;

@@ -255,6 +255,86 @@ Host *
 ```
 Use `tmux new -s deploy` on the server so drops don't kill running commands.
 
+## Security baseline (audited 2026-08-29)
+
+What an external attacker can reach is only ever Traefik's 443. Verified from
+off-box: `5432`, `6379` and `3000` are all closed to the internet, because the
+compose file declares no `ports:` for Postgres, Redis or the app — Traefik
+reaches the app over the shared `coolify` network instead. Keep it that way; the
+moment you add a `ports:` mapping to a datastore you publish it to the world.
+
+### Findings that were fixed in the app
+
+| Finding | Risk | Fix |
+| --- | --- | --- |
+| Seeded `admin@auctioneer.dev` / `admin1234` existed on production | Anyone who guessed the pattern from the two public demo logins could sign in as the admin persona | `scripts/seed.ts` now randomises every non-showcase password per run (`PRIVATE_SEED_PASSWORD`, override with `SEED_PASSWORD`). Only `demo@` and `seller@` stay public, deliberately. |
+| No security headers at all | Clickjacking, no HSTS, MIME sniffing, framework fingerprinting | `next.config.ts` now sets CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP, and disables `poweredByHeader`. |
+| Seller-supplied image URLs accepted plain `http://` | Mixed content, and the validation message promised https | `POST /api/lots` now accepts only `https://` or a site-relative `/path`. |
+| 4 moderate esbuild advisories in the production tree | `drizzle-kit` arrives as an *optional peer of better-auth*, so moving it in `package.json` does not remove it | `overrides` pins `@esbuild-kit/core-utils`'s esbuild to `^0.25.12`. `npm audit` is now clean. |
+
+### What was already correct — do not regress it
+
+- **Session cookies**: `__Secure-` prefix, `HttpOnly`, `Secure`, `SameSite=Lax`.
+  Better Auth sets these itself once it sees an https origin, which is why
+  `BETTER_AUTH_URL` must be the real public URL.
+- **Brute force**: Better Auth's built-in limiter is active in production with no
+  configuration — measured at 3 attempts before `429`.
+- **Authorization**: every mutating API route resolves the session server-side;
+  `/api/health` is the only intentionally public one. Orders check
+  `order.buyerId !== payerId`; the engine refuses `sellerId === bidderId`.
+- **Socket rooms**: the private per-user room is joined server-side from the
+  session (`socket.join(userRoom(socket.data.userId))`). There is no
+  client-controlled join for it, so nobody can subscribe to another user's
+  notifications. Chat is authenticated, truncated to 280 chars and rate-limited
+  to 5 per 10s.
+- **Injection**: no `dangerouslySetInnerHTML` anywhere; raw `sql` templates
+  interpolate Drizzle column objects only, never user values.
+- **Client bundle**: no secrets. The one `BETTER_AUTH_SECRET` string in a chunk
+  is Better Auth's env-getter shim referencing the *name*.
+
+### Known and accepted
+
+- `POST /api/wallet/topup` credits up to $1,000,000 per call, unlimited times.
+  There is no payment provider — the funding source is fictional by design. If
+  this ever takes real money, that endpoint is the first thing to replace.
+- CSP carries `script-src 'unsafe-inline'` because Next ships inline hydration
+  bootstrap. The directives doing real work here are `frame-ancestors`,
+  `object-src`, `base-uri` and `form-action`.
+
+### Rotating the seeded passwords on a live database
+
+Re-running the seed is the intended path — it truncates and rebuilds the
+catalogue, and the new code will generate a fresh admin password and print it
+once:
+
+```bash
+docker compose -f /opt/auctioneer/compose.prod.yml exec app npm run db:seed
+```
+
+## Schema changes: migrations, not push
+
+`drizzle-kit` is a devDependency again, so `db:push` is not available in the
+container. Generate migrations on the laptop and apply them on the server:
+
+```bash
+# laptop, after editing src/lib/db/schema.ts
+npm run db:generate          # writes drizzle/NNNN_*.sql, commit it
+
+# server, after the new image is pulled
+docker compose -f /opt/auctioneer/compose.prod.yml exec app npm run db:migrate
+```
+
+**One-time baseline.** The live database was built with `drizzle-kit push`, so it
+already has every table but no migration ledger. Running `db:migrate` against it
+would try to `CREATE TABLE` things that exist. Mark the existing migrations as
+applied without executing them, once:
+
+```bash
+docker compose -f /opt/auctioneer/compose.prod.yml exec -e BASELINE=1 app npm run db:migrate
+```
+
+After that, `db:migrate` behaves normally.
+
 ## Later (not urgent)
 - Turn on Coolify's Docker Cleanup (retain 1–2 old images)
 - Give valodex a `mem_limit` so it can't starve the box

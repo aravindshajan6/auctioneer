@@ -26,6 +26,7 @@
  *    path for testing.
  */
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -222,11 +223,21 @@ interface PersonaSpec {
   ratingCount?: number;
 }
 
+/**
+ * Only the two showcase logins below are meant to be public — a demo whose
+ * front door is a dead end is a demo nobody sees. Every *other* seeded account,
+ * the admin included, gets a random password per run so that a guessable
+ * pattern like "admin1234" can never reach a deployed database. Set
+ * SEED_PASSWORD to pin it when you need to log in as one of them.
+ */
+const PRIVATE_SEED_PASSWORD =
+  process.env.SEED_PASSWORD ?? randomBytes(18).toString("base64url");
+
 /** The three accounts printed at the end of the run. */
 const DEMO_LOGINS = [
   { email: "demo@auctioneer.dev", password: "demo1234", role: "bidder" },
   { email: "seller@auctioneer.dev", password: "seller1234", role: "seller" },
-  { email: "admin@auctioneer.dev", password: "admin1234", role: "admin" },
+  { email: "admin@auctioneer.dev", password: PRIVATE_SEED_PASSWORD, role: "admin" },
 ] as const;
 
 const PEOPLE: PersonaSpec[] = [
@@ -260,7 +271,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "iris",
     email: "admin@auctioneer.dev",
-    password: "admin1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Iris Okonkwo",
     handle: "iris",
     role: "admin",
@@ -275,7 +286,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "rafael",
     email: "rafael.ortiz@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Rafael Ortiz-Bennett",
     handle: "ortizbennett",
     role: "seller",
@@ -289,7 +300,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "cassandra",
     email: "cassandra.lieu@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Cassandra Lieu",
     handle: "cassandralieu",
     role: "seller",
@@ -303,7 +314,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "henrik",
     email: "henrik.sorensen@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Henrik Sørensen",
     handle: "sorensendesign",
     role: "seller",
@@ -319,7 +330,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "priya",
     email: "priya.raghunathan@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Priya Raghunathan",
     handle: "praghu",
     role: "bidder",
@@ -332,7 +343,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "gustav",
     email: "gustav.lindqvist@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Gustav Lindqvist",
     handle: "glindqvist",
     role: "bidder",
@@ -345,7 +356,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "nadia",
     email: "nadia.kirillova@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Nadia Kirillova",
     handle: "nkirillova",
     role: "bidder",
@@ -358,7 +369,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "meiling",
     email: "meiling.chow@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Mei-Ling Chow",
     handle: "mlchow",
     role: "bidder",
@@ -371,7 +382,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "thomas",
     email: "thomas.achebe@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Thomas Achebe",
     handle: "tachebe",
     role: "bidder",
@@ -384,7 +395,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "dario",
     email: "dario.fontana@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Dario Fontana",
     handle: "dfontana",
     role: "bidder",
@@ -397,7 +408,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "eleanor",
     email: "eleanor.whitbourne@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Eleanor Whitbourne",
     handle: "ewhitbourne",
     role: "bidder",
@@ -410,7 +421,7 @@ const PEOPLE: PersonaSpec[] = [
   {
     key: "yusuf",
     email: "yusuf.demir@auctioneer.dev",
-    password: "seed1234",
+    password: PRIVATE_SEED_PASSWORD,
     name: "Yusuf Demir",
     handle: "ydemir",
     role: "bidder",

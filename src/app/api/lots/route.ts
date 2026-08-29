@@ -64,7 +64,11 @@ const imageRef = z
   .min(1, "An image reference cannot be blank.")
   .max(600)
   .refine(
-    (value) => value.startsWith("/") || /^https?:\/\//i.test(value),
+    // https or a site-relative path only. Plain http would be blocked by the
+    // browser as mixed content on our TLS origin anyway, and every other scheme
+    // (javascript:, data:, blob:) is turned away here rather than relied upon
+    // being inert wherever the URL eventually lands.
+    (value) => value.startsWith("/") || /^https:\/\//i.test(value),
     "Images must be an https URL or a path beginning with /.",
   );
 

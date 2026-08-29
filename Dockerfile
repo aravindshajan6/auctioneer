@@ -58,6 +58,8 @@ COPY --chown=auctioneer:nodejs public ./public
 COPY --chown=auctioneer:nodejs server ./server
 COPY --chown=auctioneer:nodejs src ./src
 COPY --chown=auctioneer:nodejs scripts ./scripts
+# The generated SQL migrations, applied at deploy time by scripts/migrate.ts.
+COPY --chown=auctioneer:nodejs drizzle ./drizzle
 COPY --chown=auctioneer:nodejs package.json next.config.ts tsconfig.json drizzle.config.ts ./
 
 # Seeding writes catalogue art here at runtime; a volume is mounted over it.

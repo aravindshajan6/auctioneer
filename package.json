@@ -19,7 +19,9 @@
     "check:lifecycle": "tsx scripts/lifecycle-check.ts",
     "check:realtime": "tsx scripts/realtime-check.ts",
     "check:pages": "tsx scripts/page-check.ts",
-    "test:e2e": "tsx scripts/e2e.ts"
+    "test:e2e": "tsx scripts/e2e.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -56,7 +58,6 @@
     "zod": "^4.5.1",
     "zustand": "5.0.15",
     "tsx": "^4.20.6",
-    "drizzle-kit": "^0.31.10",
     "dotenv": "^17.2.4"
   },
   "devDependencies": {
@@ -70,9 +71,15 @@
     "eslint-config-next": "16.3.3",
     "playwright-core": "^1.56.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "drizzle-kit": "^0.31.10"
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
   }
 }
