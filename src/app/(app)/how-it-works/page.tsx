@@ -3,7 +3,7 @@ import Link from "next/link";
 import { INCREMENT_TIERS, incrementFor } from "@/lib/auction/increments";
 import { applyBps, formatCents } from "@/lib/auction/money";
 import { DEPOSIT_RATE_BPS, MIN_DEPOSIT_CENTS, requiredDepositFor } from "@/lib/wallet/ledger";
-import { env } from "@/lib/env";
+import { settings } from "@/lib/env";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -23,7 +23,7 @@ const SECTIONS = [
 ] as const;
 
 export default function HowItWorksPage() {
-  const cfg = env();
+  const cfg = settings();
   const premiumPercent = cfg.BUYERS_PREMIUM_BPS / 100;
 
   return (

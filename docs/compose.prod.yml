@@ -1,0 +1,117 @@
+# ---------------------------------------------------------------------------
+# Auctioneer — production stack for sapper
+#
+# Deliberate choices, because this box already runs valodex under Coolify:
+#
+#  * No `ports:` on the app. Traefik reaches it privately over the `coolify`
+#    network, so the app is never directly internet-facing and cannot collide
+#    with 80/443.
+#  * Postgres and Redis sit on a SEPARATE internal network and are not on
+#    `coolify` at all — otherwise every other container on that shared network
+#    could reach this database.
+#  * Every service has a memory limit. A runaway process here must fail on its
+#    own rather than invite the kernel to kill valodex.
+#  * The image is pulled, not built. Building peaks around 1.7 GB and this box
+#    has ~2.6 GB free.
+# ---------------------------------------------------------------------------
+name: auctioneer
+
+networks:
+  coolify:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  lot-art:
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/aravindshajan6/auctioneer:latest}
+    container_name: auctioneer
+    restart: unless-stopped
+    networks: [coolify, internal]
+    env_file: [.env]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Catalogue art is written by the seed at runtime and must survive
+      # redeploys; it is not baked into the image.
+      - lot-art:/app/public/lots
+    mem_limit: 900m
+    memswap_limit: 900m
+    cpus: 1.5
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      # HTTPS router
+      - traefik.http.routers.auctioneer.rule=Host(`auctioneer.sapper.top`)
+      - traefik.http.routers.auctioneer.entrypoints=https
+      - traefik.http.routers.auctioneer.tls=true
+      - traefik.http.routers.auctioneer.tls.certresolver=letsencrypt
+      # The port INSIDE the container. Traefik needs this because the
+      # container publishes nothing to the host.
+      - traefik.http.services.auctioneer.loadbalancer.server.port=3000
+      # Plain HTTP exists only to redirect to HTTPS. It must stay reachable:
+      # Let's Encrypt's HTTP-01 challenge is answered on :80.
+      - traefik.http.routers.auctioneer-http.rule=Host(`auctioneer.sapper.top`)
+      - traefik.http.routers.auctioneer-http.entrypoints=http
+      - traefik.http.routers.auctioneer-http.middlewares=auctioneer-https
+      - traefik.http.middlewares.auctioneer-https.redirectscheme.scheme=https
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: auctioneer-postgres
+    restart: unless-stopped
+    networks: [internal]
+    environment:
+      POSTGRES_USER: auctioneer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: auctioneer
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Tuned down for a 400 MB cap rather than left at defaults sized for a
+    # dedicated database server.
+    command: >
+      postgres -c shared_buffers=96MB -c max_connections=50
+               -c effective_cache_size=256MB -c work_mem=4MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auctioneer -d auctioneer"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    mem_limit: 400m
+    memswap_limit: 400m
+
+  redis:
+    image: redis:8-alpine
+    container_name: auctioneer-redis
+    restart: unless-stopped
+    networks: [internal]
+    # noeviction is not optional: these keys carry live bid fan-out, and
+    # silently evicting them drops broadcasts rather than erroring.
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 192m
+    memswap_limit: 192m

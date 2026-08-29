@@ -24,6 +24,30 @@ const schema = z.object({
 });
 
 /**
+ * The subset that carries no secrets and has a safe default for every field.
+ *
+ * Kept separate because a BUILD must never require runtime secrets. The
+ * house-rules page is statically prerendered and needs only the auction
+ * tuning values; if it read the full schema, `next build` would demand
+ * BETTER_AUTH_SECRET and DATABASE_URL — which would mean handing production
+ * credentials to CI just to compile a page of prose.
+ */
+const settingsSchema = schema.pick({
+  ANTISNIPE_WINDOW_SECONDS: true,
+  ANTISNIPE_EXTENSION_SECONDS: true,
+  ANTISNIPE_MAX_EXTENSIONS: true,
+  BUYERS_PREMIUM_BPS: true,
+});
+
+let cachedSettings: z.infer<typeof settingsSchema> | null = null;
+
+/** Auction tuning only. Safe to call at build time. */
+export function settings(): z.infer<typeof settingsSchema> {
+  if (!cachedSettings) cachedSettings = settingsSchema.parse(process.env);
+  return cachedSettings;
+}
+
+/**
  * Parsed lazily so that importing a module that touches `env` from a client
  * bundle does not explode — only server code ever reads these.
  */

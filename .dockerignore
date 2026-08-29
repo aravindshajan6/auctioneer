@@ -1,0 +1,36 @@
+# Everything the image does not need. Keeping this tight is what stops a
+# 1 GB build context crawling over the wire on every build.
+.git
+.github
+node_modules
+.next
+out
+build
+coverage
+
+# Secrets never enter an image layer.
+.env
+.env.*
+!.env.example
+
+# Catalogue art is seed output written to a volume at runtime, not baked in.
+public/lots
+
+# Local tooling, tests and docs add weight and no runtime value.
+docs
+scripts/e2e.ts
+scripts/page-check.ts
+scripts/realtime-check.ts
+scripts/concurrency-check.ts
+scripts/lifecycle-check.ts
+**/*.test.ts
+eslint.config.mjs
+*.md
+!README.md
+
+# Editor / OS noise
+.vscode
+.idea
+.DS_Store
+*.log
+npm-debug.log*
