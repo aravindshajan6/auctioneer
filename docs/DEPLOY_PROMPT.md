@@ -108,6 +108,16 @@ valodex down; `mem_limit` does not constrain a build.
 - **CI workflow** — build and push to GHCR, tagging both `latest` and
   `sha-<short>` so rollback names a specific build.
 
+**(learned the hard way) Do not regenerate the lockfile to make a small change.**
+Moving a dependency between `dependencies` and `devDependencies`, or adding a
+script, does NOT need a fresh `package-lock.json`. Regenerating one can re-hoist
+native/optional binaries differently (e.g. esbuild's per-platform packages), and
+a postinstall that checks its binary version then fails the Docker build with
+`Expected "X" but got "Y"`. Edit the manifest, keep the lockfile, and if it must
+change, change it by the minimum. Note that **`npm ci --dry-run` passes on a
+broken lockfile** because it skips install scripts — it is not a valid check for
+this. Only a real `docker build` is.
+
 ## Step 3.5 — rehearse locally before writing the runbook
 
 **(learned the hard way) Do not hand me instructions for something you have not
@@ -118,9 +128,37 @@ run the seed, and confirm the app serves and the health check passes.
 Report what broke. Three separate bugs surfaced this way last time and never
 reached my server.
 
+**(learned the hard way) A green build is not a booting image.** After the build
+succeeds, actually `docker run` it and hit the health endpoint before you write
+a single runbook line. When you pass env for this test, `docker run --env-file
+.env` feeds quotes and comments through literally — a value quoted in `.env`
+arrives with the quotes attached and a connection string breaks. Pass the vars
+explicitly, or strip quotes first.
+
 Be aware of the limit of this rehearsal: a local `coolify` network is *empty*,
 so it cannot reveal collisions with Coolify's own services. Reason about those
 separately — see constraint 6.
+
+## Step 3.6 — harden before you call it deployable
+
+A live URL is an exposed URL. Before the runbook, check and fix:
+- **Seed/demo credentials.** If a seed runs on production, any account with a
+  guessable password is a live login. Only intentionally-public demo logins stay
+  fixed; every other account (admin included) gets a random password per run.
+- **Security headers.** Set CSP, HSTS, `X-Frame-Options`, `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, and turn off any `X-Powered-By`
+  framework banner. Verify them with `curl -sI` against the running image.
+- **Port exposure.** From off-box, confirm the datastore ports (5432/6379/etc.)
+  and the app's own port are closed to the internet — only the proxy's 443
+  should answer.
+- **Secrets in the client bundle.** Grep the built assets; nothing but
+  intentionally-public `PUBLIC_`/`NEXT_PUBLIC_` values should appear.
+- **Schema changes via migrations, not a live `push`.** A push against a
+  populated database is unversioned and irreversible; generate migrations and
+  apply them, baselining once if the DB was originally built with push.
+
+Report what you found and fixed. Re-verify each on the deployed URL in Step 4,
+not just locally.
 
 ## Step 4 — give me the runbook
 
@@ -139,6 +177,17 @@ Cover:
 - Rollback via the `sha-` tag
 - Diagnosis: 404 (Traefik matched nothing) vs 502 (app not reachable) vs
   `no available server` (route matched, container mid-restart)
+- **(learned the hard way) Do not hardcode the compose filename in follow-up
+  commands.** `deploy.sh` finds the compose file; a hand-written
+  `docker compose -f compose.prod.yml exec …` line silently fails with
+  `no such file or directory` if the file is named differently, and the
+  migrate/seed/restart you thought ran did not. Run `docker compose` from the
+  app directory with no `-f` and let it resolve, or confirm the real filename
+  with `ls /opt/<appname>/*.y*ml` first.
+- **(learned the hard way) Verify the change you shipped, not just that the app
+  is up.** `curl` the thing that was supposed to change and assert on it —
+  headers present, an old credential now rejected, the new route answering. A
+  healthy container proves it started, not that the deploy did what it was for.
 
 ## Working rules
 
