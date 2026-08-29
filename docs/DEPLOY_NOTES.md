@@ -221,7 +221,7 @@ PAT needs **only** `read:packages`.
 ## First-deploy order that actually works
 ```
 ./deploy.sh
-docker compose exec app npx drizzle-kit push --force   # or your migration cmd
+docker compose exec app npm run db:migrate             # drizzle-kit is NOT in the image
 docker compose exec app npm run db:seed                # optional
 docker compose restart app                             # REQUIRED after seeding
 curl -s https://newapp.sapper.top/api/health
